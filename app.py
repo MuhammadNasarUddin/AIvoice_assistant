@@ -25,7 +25,16 @@ st.title('Rehan AI Voice Assistant')
 
 
 def listen():
-    with sr.Microphone(device_index=0) as source:
+    available_device = sr.Microphone.list_microphone_names()
+
+    if not available_microphones:
+        st.error("No microphone devices available.")
+        return
+
+    # Use the first available microphone
+    chosen_device_index = 0
+    with sr.Microphone(device_index=chosen_device_index) as source:
+
         # Display "Listening" message
         listening_message = st.toast("Listening...")
 
