@@ -25,15 +25,17 @@ st.title('Rehan AI Voice Assistant')
 
 
 def listen():
-    available_device = sr.Microphone.list_microphone_names()
+    try:
+        available_microphones = sr.Microphone.list_microphone_names()
 
-    if not available_microphones:
-        st.error("No microphone devices available.")
-        return
+        if not available_microphones:
+            st.error("No microphone devices available.")
+            return
 
-    # Use the first available microphone
-    chosen_device_index = 0
-    with sr.Microphone(device_index=chosen_device_index) as source:
+        # Use the first available microphone
+        chosen_device_index = 0
+
+        with sr.Microphone(device_index=chosen_device_index) as source:
 
         # Display "Listening" message
         listening_message = st.toast("Listening...")
@@ -90,6 +92,9 @@ def listen():
             st.error(f'Request to Google API failed: {e}')
         except Exception as e:
             st.error(f'An unexpected error occurred: {e}')
+        except Exception as e:
+        st.error(f'An unexpected error occurred while setting up the microphone: {e}')
+    
 
 
 # UI components
