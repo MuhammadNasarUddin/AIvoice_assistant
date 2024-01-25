@@ -6,6 +6,8 @@ from pathlib import Path
 from playsound import playsound
 import threading
 from dotenv import load_dotenv
+import sounddevice as sd
+import wavio
 
 # Load environment variables from .env
 load_dotenv()
@@ -16,6 +18,8 @@ client = OpenAI(api_key=os.environ['openai_api_key'])
 
 # Initialize the recognizer
 r = sr.Recognizer()
+sample_rate = 44100
+duration = 5
 r.energy_threshold = 4000
 r.dynamic_energy_threshold = True
 r.dynamic_energy_adjustment_damping = 0.15
@@ -24,33 +28,37 @@ r.dynamic_energy_ratio = 1.5
 st.title('Rehan AI Voice Assistant')
 
 
+# def get_microphone_index():
+#     # Try to find a suitable microphone index dynamically
+#     for index, name in enumerate(sr.Microphone.list_microphone_names()):
+#         if "Your Microphone Name" in name:
+#             return index
+
+#     # If the desired microphone name is not found, use the default
+#     return None
+
 def listen():
+    listening_message = st.toast("Listening...")
+    try:    
+        audio_data = sd.rec(int(sample_rate * duration), samplerate=sample_rate, channels=1, dtype='int16')
+        sd.wait()
+        wavio.write("audio.wav", audio_data, sample_rate, sampwidth=3)
 
-    try:
-        available_microphones = sr.Microphone.list_microphone_names()
-
-        if not available_microphones:
-            st.error("No microphone devices available.")
-            return
-
-        # Use the first available microphone
-        chosen_device_index = 0
-
-        with sr.Microphone(device_index=chosen_device_index) as source:
+        audio_path = 'audio.wav'
+        with sr.AudioFile(audio_path) as source:
+            audio_data = r.record(source)
+            text = r.recognize_google(audio_data, key=None, language="en-US", show_all=False)
+            print("you said:", text)
 
 
-        # Display "Listening" message
-            listening_message = st.toast("Listening...")
-
-        try:
             # Capture audio
-            audio = r.listen(source, timeout=5)
+            # audio = r.listen(source, timeout=2)
 
             # Update message after listening
             listening_message.toast("Listening Completed.... ")
 
             # Recognize speech using Google's speech recognition
-            transcripted = r.recognize_google(audio)
+            transcripted = r.recognize_google(audio_data)
 
             # Display transcription
             st.warning(transcripted)
@@ -86,17 +94,14 @@ def listen():
             # Play the generated audio in a separate thread
             threading.Thread(target=playsound, args=(str(speech_file_path),)).start()
 
-        except sr.WaitTimeoutError:
+    except sr.WaitTimeoutError:
             st.error('No speech detected within the timeout period.')
-        except sr.UnknownValueError:
+    except sr.UnknownValueError:
             st.error('Could not understand audio')
-        except sr.RequestError as e:
+    except sr.RequestError as e:
             st.error(f'Request to Google API failed: {e}')
-        except Exception as e:
-            st.error(f'An unexpected error occurred: {e}')
     except Exception as e:
-        st.error(f'An unexpected error occurred while setting up the microphone: {e}')
-    
+            st.error(f'An unexpected error occurred: {e}')
 
 
 # UI components
