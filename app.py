@@ -24,28 +24,14 @@ r.dynamic_energy_ratio = 1.5
 st.title('Rehan AI Voice Assistant')
 
 
-def get_microphone_index():
-    # Try to find a suitable microphone index dynamically
-    for index, name in enumerate(sr.Microphone.list_microphone_names()):
-        if "Your Microphone Name" in name:
-            return index
-
-    # If the desired microphone name is not found, use the default
-    return None
-
 def listen():
-    device_index = get_microphone_index()
+    with sr.Microphone(device_index=0) as source:
+        # Display "Listening" message
+        listening_message = st.toast("Listening...")
 
-    
-    listening_message = st.toast("Listening...")
-
-
-    try:
-            
-            
-            with sr.Microphone(device_index=device_index) as source:
+        try:
             # Capture audio
-                audio = r.listen(source, timeout=2)
+            audio = r.listen(source, timeout=5)
 
             # Update message after listening
             listening_message.toast("Listening Completed.... ")
@@ -87,13 +73,13 @@ def listen():
             # Play the generated audio in a separate thread
             threading.Thread(target=playsound, args=(str(speech_file_path),)).start()
 
-    except sr.WaitTimeoutError:
+        except sr.WaitTimeoutError:
             st.error('No speech detected within the timeout period.')
-    except sr.UnknownValueError:
+        except sr.UnknownValueError:
             st.error('Could not understand audio')
-    except sr.RequestError as e:
+        except sr.RequestError as e:
             st.error(f'Request to Google API failed: {e}')
-    except Exception as e:
+        except Exception as e:
             st.error(f'An unexpected error occurred: {e}')
 
 
