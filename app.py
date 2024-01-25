@@ -6,13 +6,11 @@ from pathlib import Path
 from playsound import playsound
 import threading
 from dotenv import load_dotenv
-import sounddevice as sd
-import wavio
+from pydub import AudioSegment
+from pydub.playback import play
 
 # Load environment variables from .env
 load_dotenv()
-print(sr.Microphone.list_microphone_names())
-
 
 client = OpenAI(api_key=os.environ['openai_api_key'])
 
@@ -27,34 +25,21 @@ r.dynamic_energy_ratio = 1.5
 
 st.title('Rehan AI Voice Assistant')
 
-
-# def get_microphone_index():
-#     # Try to find a suitable microphone index dynamically
-#     for index, name in enumerate(sr.Microphone.list_microphone_names()):
-#         if "Your Microphone Name" in name:
-#             return index
-
-#     # If the desired microphone name is not found, use the default
-#     return None
-
 def listen():
     listening_message = st.toast("Listening...")
     try:    
-        audio_data = sd.rec(int(sample_rate * duration), samplerate=sample_rate, channels=1, dtype='int16')
-        sd.wait()
-        wavio.write("audio.wav", audio_data, sample_rate, sampwidth=3)
+        with sr.Microphone() as source:
+            audio_data = r.listen(source, timeout=duration, phrase_time_limit=duration)
 
         audio_path = 'audio.wav'
+        with open(audio_path, 'wb') as audio_file:
+            audio_file.write(audio_data.get_wav_data())
+
         with sr.AudioFile(audio_path) as source:
             audio_data = r.record(source)
             text = r.recognize_google(audio_data, key=None, language="en-US", show_all=False)
             print("you said:", text)
 
-
-            # Capture audio
-            # audio = r.listen(source, timeout=2)
-
-            # Update message after listening
             listening_message.toast("Listening Completed.... ")
 
             # Recognize speech using Google's speech recognition
@@ -82,7 +67,6 @@ def listen():
             # Display AI response
             st.success(response_content)
 
-            # Generate audio file from AI response
             speech_file_path = Path(__file__).parent / "output.mp3"
             audio_response = client.audio.speech.create(
                 model="tts-1",
@@ -94,15 +78,21 @@ def listen():
             # Play the generated audio in a separate thread
             threading.Thread(target=playsound, args=(str(speech_file_path),)).start()
 
-    except sr.WaitTimeoutError:
-            st.error('No speech detected within the timeout period.')
-    except sr.UnknownValueError:
-            st.error('Could not understand audio')
-    except sr.RequestError as e:
-            st.error(f'Request to Google API failed: {e}')
-    except Exception as e:
-            st.error(f'An unexpected error occurred: {e}')
+            # Generate audio file from AI response
+            # speech = AudioSegment.from_text(response_content, voice="en", lang="en")
+            # speech.export("output.mp3", format="mp3")
 
+            # # Play the generated audio
+            # threading.Thread(target=play, args=("output.mp3",)).start()
+
+    except sr.WaitTimeoutError:
+        st.error('No speech detected within the timeout period.')
+    except sr.UnknownValueError:
+        st.error('Could not understand audio')
+    except sr.RequestError as e:
+        st.error(f'Request to Google API failed: {e}')
+    except Exception as e:
+        st.error(f'An unexpected error occurred: {e}')
 
 # UI components
 if st.button("🎤"):
